@@ -429,7 +429,6 @@ class SpotROS():
         mobility_params.swing_height = int(data.data)
         self.spot_wrapper.set_mobility_params(mobility_params)
 
-
     def handle_list_graph(self, upload_path):
         """ROS service handler for listing graph_nav waypoint_ids"""
         resp = self.spot_wrapper.list_graph(upload_path)
@@ -585,7 +584,7 @@ class SpotROS():
             rospy.Subscriber('cmd_vel', Twist, self.cmdVelCallback, queue_size = 1)
             rospy.Subscriber('body_pose', Pose, self.bodyPoseCallback, queue_size = 1)
             rospy.Subscriber('terrain_mu', Float64, self.terrainMuCallback, queue_size = 1)
-+           rospy.Subscriber('swing_height', Int8, self.swingHeightCallback, queue_size = 1)
+            rospy.Subscriber('swing_height', Int8, self.swingHeightCallback, queue_size = 1)
 
 
             rospy.Service("claim", Trigger, self.handle_claim)
