@@ -1,7 +1,7 @@
 import rospy
 
 from std_srvs.srv import Trigger, TriggerResponse, SetBool, SetBoolResponse
-from std_msgs.msg import Bool
+from std_msgs.msg import Bool, Float64, Int8
 from tf2_msgs.msg import TFMessage
 from geometry_msgs.msg import TransformStamped
 from sensor_msgs.msg import Image, CameraInfo
@@ -417,6 +417,19 @@ class SpotROS():
         mobility_params.body_control.CopyFrom(body_control)
         self.spot_wrapper.set_mobility_params(mobility_params)
 
+    def terrainMuCallback(self, data):
+        """Callback for setting terrain mu"""
+        mobility_params = self.spot_wrapper.get_mobility_params()
+        mobility_params.terrain_params.ground_mu_hint.value = data.data
+        self.spot_wrapper.set_mobility_params(mobility_params)
+    
+    def swingHeightCallback(self, data):
+        """Callback for setting swing height"""
+        mobility_params = self.spot_wrapper.get_mobility_params()
+        mobility_params.swing_height = int(data.data)
+        self.spot_wrapper.set_mobility_params(mobility_params)
+
+
     def handle_list_graph(self, upload_path):
         """ROS service handler for listing graph_nav waypoint_ids"""
         resp = self.spot_wrapper.list_graph(upload_path)
@@ -571,6 +584,9 @@ class SpotROS():
 
             rospy.Subscriber('cmd_vel', Twist, self.cmdVelCallback, queue_size = 1)
             rospy.Subscriber('body_pose', Pose, self.bodyPoseCallback, queue_size = 1)
+            rospy.Subscriber('terrain_mu', Float64, self.terrainMuCallback, queue_size = 1)
++           rospy.Subscriber('swing_height', Int8, self.swingHeightCallback, queue_size = 1)
+
 
             rospy.Service("claim", Trigger, self.handle_claim)
             rospy.Service("release", Trigger, self.handle_release)
