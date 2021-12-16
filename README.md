@@ -1,3 +1,11 @@
+# Additions to the clearpath driver so far:
+
+1. Additional topic to publish mobility params to (terrain friction hint, step height, etc)
+
+2. Optional node for running local grid publishing (still needs debugging and optimizing)
+
+
+
 # Spot ROS Driver
 
 ![CP Spot](cp_spot.jpg)
