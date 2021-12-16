@@ -1,0 +1,7 @@
+#!/usr/bin/env python3
+
+from spot_driver.local_grid import LocalGridPublisher 
+
+if __name__ == "__main__":
+    LGP = LocalGridPublisher()
+    LGP.loop()

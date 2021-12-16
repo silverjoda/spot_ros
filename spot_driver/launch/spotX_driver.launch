@@ -3,6 +3,7 @@
   <arg name="password" default="niftiniftinifti" />
   <arg name="hostname" default="192.168.50.3" />
   <arg name="estop_timeout" default="9.0"/>
+  <arg name="publish_local_grid" default="false"/>
 
   <include file="$(find spot_description)/launch/description.launch" />
   <include file="$(find spot_driver)/launch/control.launch" />
@@ -23,5 +24,6 @@
     <remap from="cmd_vel_out" to="spot/cmd_vel"/>
   </node>
 
+  <node pkg="spot_driver" type="local_grid" name="local_grid" if="$(arg publish_local_grid)" />
 </launch>
 
