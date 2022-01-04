@@ -9,13 +9,4 @@
     <param name="robot_name" value="spot" />
   </node>
 
-  <group if="$(arg joy)">
-    <rosparam command="load" ns="bluetooth_teleop" file="$(arg joy_config)" />
-
-    <group ns="bluetooth_teleop">
-      <param name="joy_node/dev" value="$(arg joy_dev)" />
-      <node pkg="joy" type="joy_node" name="joy_node" />
-      <node pkg="teleop_twist_joy" type="teleop_node" name="teleop_twist_joy"/>
-    </group>
-  </group>
 </launch>
