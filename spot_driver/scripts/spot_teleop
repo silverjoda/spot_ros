@@ -1,0 +1,7 @@
+#!/usr/bin/env python3
+
+from spot_driver.spot_teleop import SpotTeleop 
+
+if __name__ == "__main__":
+    ST = SpotTeleop()
+    ST.loop()

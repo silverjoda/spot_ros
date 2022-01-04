@@ -16,6 +16,7 @@ include_directories(
 catkin_install_python(PROGRAMS
     scripts/spot_ros
     scripts/local_grid
+    scripts/spot_teleop
     DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
