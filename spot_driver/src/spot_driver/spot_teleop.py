@@ -11,11 +11,11 @@ from spot_msgs.msg import BehaviorFaultState
 
 class SpotTeleop:
     def __init__(self):
-	self.vel_x_scalar = 0.7
-	self.vel_y_scalar = 0.3
-	self.ang_z_scalar = 0.7
-        
-	self.current_state = "sit"
+        self.vel_x_scalar = 0.7
+        self.vel_y_scalar = 0.3
+        self.ang_z_scalar = 0.7
+
+        self.current_state = "sit"
         self.stairs_mode = False
         self.latest_stance_timestamp = time.time()
 
@@ -24,7 +24,7 @@ class SpotTeleop:
         rospy.loginfo("Starting spot teleop")
 
     def init_ros(self):
-        rospy.init_node()
+        rospy.init_node("spot_teleop_node")
 
         self.ros_rate = rospy.Rate(50)
 
@@ -47,7 +47,7 @@ class SpotTeleop:
 
         time.sleep(2)
 
-        rospy.loginfo("Spot teleop node initialized ros".format()
+        rospy.loginfo("Spot teleop node initialized ros")
 
     def _ros_joy_callback(self, data):
         with self.joy_lock:
@@ -134,8 +134,8 @@ class SpotTeleop:
         time.sleep(0.2)
         try:
             rospy.wait_for_service(full_service_name, timeout=1)
-        except (rospy.ServiceException, rospy.ROSException), e:
-            rospy.logerr("Spot teleop: Timeout while waiting for {} service: {}".format(stance_string, e))
+        except (rospy.ServiceException, rospy.ROSException):
+            rospy.logerr("Spot teleop: Timeout while waiting for {} service".format(stance_string))
             return TriggerResponse(success=False)
 
         try:
@@ -153,8 +153,8 @@ class SpotTeleop:
         time.sleep(0.2)
         try:
             rospy.wait_for_service(full_service_name, timeout=1)
-        except (rospy.ServiceException, rospy.ROSException), e:
-            rospy.logerr("Spot teleop: Timeout while waiting for stairs_mode service: {}".format(e))
+        except (rospy.ServiceException, rospy.ROSException):
+            rospy.logerr("Spot teleop: Timeout while waiting for stairs_mode service")
             return False
 
         try:
@@ -167,6 +167,7 @@ class SpotTeleop:
             return False
         return res
 
+
     def power_on(self):
         full_service_name = "/spot/power_on"
         # Wait for last cmd_vel msg to have gone
@@ -175,8 +176,8 @@ class SpotTeleop:
 
         try:
             rospy.wait_for_service(full_service_name, timeout=1)
-        except (rospy.ServiceException, rospy.ROSException), e:
-            rospy.logerr("Spot teleop: Timeout while waiting for power_on service: {}".format(e))
+        except (rospy.ServiceException, rospy.ROSException):
+            rospy.logerr("Spot teleop: Timeout while waiting for power_on service")
             return False
 
         try:
@@ -195,8 +196,8 @@ class SpotTeleop:
 
         try:
             rospy.wait_for_service(full_service_name, timeout=1)
-        except (rospy.ServiceException, rospy.ROSException), e:
-            rospy.logerr("Spot teleop: Timeout while waiting for power_on service: {}".format(e))
+        except (rospy.ServiceException, rospy.ROSException):
+            rospy.logerr("Spot teleop: Timeout while waiting for power_on service")
             return False
 
         try:
