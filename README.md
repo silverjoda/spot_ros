@@ -4,6 +4,8 @@
 
 2. Optional node for running local grid publishing (still needs debugging and optimizing)
 
+3. Spot ros teleop with power-on, stand, sit, stairs functionalities.
+
 
 
 # Spot ROS Driver
