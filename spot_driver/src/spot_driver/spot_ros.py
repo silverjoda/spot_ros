@@ -43,6 +43,7 @@ import actionlib
 import logging
 import threading
 
+
 class SpotROS():
     """Parent class for using the wrapper.  Defines all callbacks and keeps the wrapper alive"""
 
@@ -57,6 +58,7 @@ class SpotROS():
         self.callbacks["front_image"] = self.FrontImageCB
         self.callbacks["side_image"] = self.SideImageCB
         self.callbacks["rear_image"] = self.RearImageCB
+        self.callbacks["hand_image"] = self.HandImageCB
 
     def RobotStateCB(self, results):
         """Callback for when the Spot Wrapper gets new robot state data.
@@ -184,11 +186,19 @@ class SpotROS():
             image_msg3, camera_info_msg3 = getImageMsg(data[3], self.spot_wrapper)
             self.frontright_depth_pub.publish(image_msg3)
             self.frontright_depth_info_pub.publish(camera_info_msg3)
+            image_msg4, camera_info_msg4 = getImageMsg(data[4], self.spot_wrapper)
+            self.frontleft_depth_in_visual_pub.publish(image_msg4)
+            self.frontleft_depth_in_visual_info_pub.publish(camera_info_msg4)
+            image_msg5, camera_info_msg5 = getImageMsg(data[5], self.spot_wrapper)
+            self.frontright_depth_in_visual_pub.publish(image_msg5)
+            self.frontright_depth_in_visual_info_pub.publish(camera_info_msg5)
 
             self.populate_camera_static_transforms(data[0])
             self.populate_camera_static_transforms(data[1])
             self.populate_camera_static_transforms(data[2])
             self.populate_camera_static_transforms(data[3])
+            self.populate_camera_static_transforms(data[4])
+            self.populate_camera_static_transforms(data[5])
 
     def SideImageCB(self, results):
         """Callback for when the Spot Wrapper gets new side image data.
@@ -233,6 +243,32 @@ class SpotROS():
 
             self.populate_camera_static_transforms(data[0])
             self.populate_camera_static_transforms(data[1])
+
+    def HandImageCB(self, results):
+        """Callback for when the Spot Wrapper gets new hand image data.
+
+        Args:
+            results: FutureWrapper object of AsyncPeriodicQuery callback
+        """
+        data = self.spot_wrapper.hand_images
+        if data:
+            mage_msg0, camera_info_msg0 = getImageMsg(data[0], self.spot_wrapper)
+            self.hand_image_mono_pub.publish(mage_msg0)
+            self.hand_image_mono_info_pub.publish(camera_info_msg0)
+            mage_msg1, camera_info_msg1 = getImageMsg(data[1], self.spot_wrapper)
+            self.hand_depth_pub.publish(mage_msg1)
+            self.hand_depth_info_pub.publish(camera_info_msg1)
+            image_msg2, camera_info_msg2 = getImageMsg(data[2], self.spot_wrapper)
+            self.hand_image_color_pub.publish(image_msg2)
+            self.hand_image_color_info_pub.publish(camera_info_msg2)
+            image_msg3, camera_info_msg3 = getImageMsg(data[3], self.spot_wrapper)
+            self.hand_depth_in_hand_color_pub.publish(image_msg3)
+            self.hand_depth_in_color_info_pub.publish(camera_info_msg3)
+
+            self.populate_camera_static_transforms(data[0])
+            self.populate_camera_static_transforms(data[1])
+            self.populate_camera_static_transforms(data[2])
+            self.populate_camera_static_transforms(data[3])
 
     def handle_claim(self, req):
         """ROS service handler for the claim service"""
@@ -300,7 +336,7 @@ class SpotROS():
         try:
             mobility_params = self.spot_wrapper.get_mobility_params()
             mobility_params.stair_hint = req.data
-            self.spot_wrapper.set_mobility_params( mobility_params )
+            self.spot_wrapper.set_mobility_params(mobility_params)
             return SetBoolResponse(True, 'Success')
         except Exception as e:
             return SetBoolResponse(False, 'Error:{}'.format(e))
@@ -310,7 +346,7 @@ class SpotROS():
         try:
             mobility_params = self.spot_wrapper.get_mobility_params()
             mobility_params.locomotion_hint = req.locomotion_mode
-            self.spot_wrapper.set_mobility_params( mobility_params )
+            self.spot_wrapper.set_mobility_params(mobility_params)
             return SetLocomotionResponse(True, 'Success')
         except Exception as e:
             return SetLocomotionResponse(False, 'Error:{}'.format(e))
@@ -347,17 +383,17 @@ class SpotROS():
 
         cmd_duration = rospy.Duration(req.duration.data.secs, req.duration.data.nsecs)
         resp = self.spot_wrapper.trajectory_cmd(
-                        goal_x=req.target_pose.pose.position.x,
-                        goal_y=req.target_pose.pose.position.y,
-                        goal_heading=math_helpers.Quat(
-                            w=req.target_pose.pose.orientation.w,
-                            x=req.target_pose.pose.orientation.x,
-                            y=req.target_pose.pose.orientation.y,
-                            z=req.target_pose.pose.orientation.z
-                            ).to_yaw(),
-                        cmd_duration=cmd_duration.to_sec(),
-                        precise_position=req.precise_positioning,
-                        )
+            goal_x=req.target_pose.pose.position.x,
+            goal_y=req.target_pose.pose.position.y,
+            goal_heading=math_helpers.Quat(
+                w=req.target_pose.pose.orientation.w,
+                x=req.target_pose.pose.orientation.x,
+                y=req.target_pose.pose.orientation.y,
+                z=req.target_pose.pose.orientation.z
+            ).to_yaw(),
+            cmd_duration=cmd_duration.to_sec(),
+            precise_position=req.precise_positioning,
+        )
 
         def timeout_cb(trajectory_server, _):
             trajectory_server.publish_feedback(TrajectoryFeedback("Failed to reach goal, timed out"))
@@ -374,7 +410,8 @@ class SpotROS():
         while not rospy.is_shutdown() and not self.trajectory_server.is_preempt_requested() and not self.spot_wrapper.at_goal and self.trajectory_server.is_active():
             if self.spot_wrapper.near_goal:
                 if self.spot_wrapper._last_trajectory_command_precise:
-                    self.trajectory_server.publish_feedback(TrajectoryFeedback("Near goal, performing final adjustments"))
+                    self.trajectory_server.publish_feedback(
+                        TrajectoryFeedback("Near goal, performing final adjustments"))
                 else:
                     self.trajectory_server.publish_feedback(TrajectoryFeedback("Near goal"))
             else:
@@ -395,6 +432,56 @@ class SpotROS():
             else:
                 self.trajectory_server.publish_feedback(TrajectoryFeedback("Failed to reach goal"))
                 self.trajectory_server.set_aborted(TrajectoryResult(False, "Failed to reach goal"))
+
+    def handle_arm_trajectory(self, req):
+        """ROS actionserver execution handler to handle receiving a request to move the arm to a location"""
+
+        if req.target_pose.header.frame_id != 'body':
+            self.arm_trajectory_server.set_aborted(TrajectoryResult(False, 'frame_id of target_pose must be \'body\''))
+            return
+
+        if req.duration.data.to_sec() <= 0:
+            self.arm_trajectory_server.set_aborted(TrajectoryResult(False, 'duration must be larger than 0'))
+            return
+
+        cmd_duration = rospy.Duration(req.duration.data.secs, req.duration.data.nsecs)
+
+        resp = self.spot_wrapper.arm_trajectory_cmd(
+            req.target_pose.pose.position,
+            req.target_pose.pose.orientation,
+            cmd_duration=cmd_duration.to_sec()
+        )
+
+        def timeout_cb(arm_trajectory_server, _):
+            arm_trajectory_server.publish_feedback(TrajectoryFeedback("Failed to reach goal, timed out"))
+            arm_trajectory_server.set_aborted(TrajectoryResult(False, "Failed to reach goal, timed out"))
+
+        # Abort the actionserver if cmd_duration is exceeded - the driver stops but does not provide feedback to
+        # indicate this so we monitor it ourselves
+        cmd_timeout = rospy.Timer(cmd_duration, functools.partial(timeout_cb, self.arm_trajectory_server), oneshot=True)
+
+        # The trajectory command is non-blocking but we need to keep this function up in order to interrupt if a
+        # preempt is requested and to return success if/when the robot reaches the goal. Also check the is_active to
+        # monitor whether the timeout_cb has already aborted the command
+        rate = rospy.Rate(10)
+        while not rospy.is_shutdown() and not self.arm_trajectory_server.is_preempt_requested() and not self.spot_wrapper.arm_at_goal and self.arm_trajectory_server.is_active():
+            self.trajectory_server.publish_feedback(TrajectoryFeedback("Moving to goal"))
+            rate.sleep()
+
+        # If still active after exiting the loop, the command did not time out
+        if self.arm_trajectory_server.is_active():
+            cmd_timeout.shutdown()
+            if self.arm_trajectory_server.is_preempt_requested():
+                self.arm_trajectory_server.publish_feedback(TrajectoryFeedback("Preempted"))
+                self.arm_trajectory_server.set_preempted()
+                self.spot_wrapper.stop()
+
+            if self.spot_wrapper.arm_at_goal:
+                self.arm_trajectory_server.publish_feedback(TrajectoryFeedback("Reached goal"))
+                self.arm_trajectory_server.set_succeeded(TrajectoryResult(resp[0], resp[1]))
+            else:
+                self.arm_trajectory_server.publish_feedback(TrajectoryFeedback("Failed to reach goal"))
+                self.arm_trajectory_server.set_aborted(TrajectoryResult(False, "Failed to reach goal"))
 
     def cmdVelCallback(self, data):
         """Callback for cmd_vel command"""
@@ -445,14 +532,14 @@ class SpotROS():
     def handle_navigate_to(self, msg):
         """ROS service handler to run mission of the robot.  The robot will replay a mission"""
         # create thread to periodically publish feedback
-        feedback_thraed = threading.Thread(target = self.handle_navigate_to_feedback, args = ())
+        feedback_thraed = threading.Thread(target=self.handle_navigate_to_feedback, args=())
         self.run_navigate_to = True
         feedback_thraed.start()
         # run navigate_to
-        resp = self.spot_wrapper.navigate_to(upload_path = msg.upload_path,
-                                             navigate_to = msg.navigate_to,
-                                             initial_localization_fiducial = msg.initial_localization_fiducial,
-                                             initial_localization_waypoint = msg.initial_localization_waypoint)
+        resp = self.spot_wrapper.navigate_to(upload_path=msg.upload_path,
+                                             navigate_to=msg.navigate_to,
+                                             initial_localization_fiducial=msg.initial_localization_fiducial,
+                                             initial_localization_waypoint=msg.initial_localization_waypoint)
         self.run_navigate_to = False
         feedback_thraed.join()
 
@@ -478,8 +565,10 @@ class SpotROS():
         for frame_name in image_data.shot.transforms_snapshot.child_to_parent_edge_map:
             if frame_name in excluded_frames:
                 continue
-            parent_frame = image_data.shot.transforms_snapshot.child_to_parent_edge_map.get(frame_name).parent_frame_name
-            existing_transforms = [(transform.header.frame_id, transform.child_frame_id) for transform in self.camera_static_transforms]
+            parent_frame = image_data.shot.transforms_snapshot.child_to_parent_edge_map.get(
+                frame_name).parent_frame_name
+            existing_transforms = [(transform.header.frame_id, transform.child_frame_id) for transform in
+                                   self.camera_static_transforms]
             if (parent_frame, frame_name) in existing_transforms:
                 # We already extracted this transform
                 continue
@@ -520,7 +609,7 @@ class SpotROS():
         # Spot has 2 types of odometries: 'odom' and 'vision'
         # The former one is kinematic odometry and the second one is a combined odometry of vision and kinematics
         # These params enables to change which odometry frame is a parent of body frame and to change tf names of each odometry frames.
-        self.mode_parent_odom_tf = rospy.get_param('~mode_parent_odom_tf', 'odom') # 'vision' or 'odom'
+        self.mode_parent_odom_tf = rospy.get_param('~mode_parent_odom_tf', 'odom')  # 'vision' or 'odom'
         self.tf_name_kinematic_odom = rospy.get_param('~tf_name_kinematic_odom', 'odom')
         self.tf_name_raw_kinematic = 'odom'
         self.tf_name_vision_odom = rospy.get_param('~tf_name_vision_odom', 'vision')
@@ -541,12 +630,20 @@ class SpotROS():
             self.frontright_image_pub = rospy.Publisher('camera/frontright/image', Image, queue_size=10)
             self.left_image_pub = rospy.Publisher('camera/left/image', Image, queue_size=10)
             self.right_image_pub = rospy.Publisher('camera/right/image', Image, queue_size=10)
+            self.hand_image_mono_pub = rospy.Publisher('camera/hand_mono/image', Image, queue_size=10)
+            self.hand_image_color_pub = rospy.Publisher('camera/hand_color/image', Image, queue_size=10)
             # Depth #
             self.back_depth_pub = rospy.Publisher('depth/back/image', Image, queue_size=10)
             self.frontleft_depth_pub = rospy.Publisher('depth/frontleft/image', Image, queue_size=10)
             self.frontright_depth_pub = rospy.Publisher('depth/frontright/image', Image, queue_size=10)
             self.left_depth_pub = rospy.Publisher('depth/left/image', Image, queue_size=10)
             self.right_depth_pub = rospy.Publisher('depth/right/image', Image, queue_size=10)
+            self.hand_depth_pub = rospy.Publisher('depth/hand/image', Image, queue_size=10)
+            self.hand_depth_in_hand_color_pub = rospy.Publisher('depth/hand/depth_in_color', Image, queue_size=10)
+            self.frontleft_depth_in_visual_pub = rospy.Publisher('depth/frontleft/depth_in_visual', Image,
+                                                                 queue_size=10)
+            self.frontright_depth_in_visual_pub = rospy.Publisher('depth/frontright/depth_in_visual', Image,
+                                                                  queue_size=10)
 
             # Image Camera Info #
             self.back_image_info_pub = rospy.Publisher('camera/back/camera_info', CameraInfo, queue_size=10)
@@ -554,12 +651,22 @@ class SpotROS():
             self.frontright_image_info_pub = rospy.Publisher('camera/frontright/camera_info', CameraInfo, queue_size=10)
             self.left_image_info_pub = rospy.Publisher('camera/left/camera_info', CameraInfo, queue_size=10)
             self.right_image_info_pub = rospy.Publisher('camera/right/camera_info', CameraInfo, queue_size=10)
+            self.hand_image_mono_info_pub = rospy.Publisher('camera/hand_mono/camera_info', CameraInfo, queue_size=10)
+            self.hand_image_color_info_pub = rospy.Publisher('camera/hand_color/camera_info', CameraInfo, queue_size=10)
+
             # Depth Camera Info #
             self.back_depth_info_pub = rospy.Publisher('depth/back/camera_info', CameraInfo, queue_size=10)
             self.frontleft_depth_info_pub = rospy.Publisher('depth/frontleft/camera_info', CameraInfo, queue_size=10)
             self.frontright_depth_info_pub = rospy.Publisher('depth/frontright/camera_info', CameraInfo, queue_size=10)
             self.left_depth_info_pub = rospy.Publisher('depth/left/camera_info', CameraInfo, queue_size=10)
             self.right_depth_info_pub = rospy.Publisher('depth/right/camera_info', CameraInfo, queue_size=10)
+            self.hand_depth_info_pub = rospy.Publisher('depth/hand/camera_info', CameraInfo, queue_size=10)
+            self.hand_depth_in_color_info_pub = rospy.Publisher('depth/hand/depth_in_color/camera_info', CameraInfo,
+                                                                queue_size=10)
+            self.frontleft_depth_in_visual_info_pub = rospy.Publisher('depth/frontleft/depth_in_visual/camera_info',
+                                                                      CameraInfo, queue_size=10)
+            self.frontright_depth_in_visual_info_pub = rospy.Publisher('depth/frontright/depth_in_visual/camera_info',
+                                                                       CameraInfo, queue_size=10)
 
             # Status Publishers #
             self.joint_state_pub = rospy.Publisher('joint_states', JointState, queue_size=10)
@@ -616,6 +723,11 @@ class SpotROS():
                                                                   execute_cb=self.handle_trajectory,
                                                                   auto_start=False)
             self.trajectory_server.start()
+
+            self.arm_trajectory_server = actionlib.SimpleActionServer("arm/trajectory", TrajectoryAction,
+                                                                      execute_cb=self.handle_arm_trajectory,
+                                                                      auto_start=False)
+            self.arm_trajectory_server.start()
 
             rospy.on_shutdown(self.shutdown)
 
