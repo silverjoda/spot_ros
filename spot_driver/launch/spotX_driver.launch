@@ -1,6 +1,6 @@
 <launch>
   <arg name="username" default="robot" />
-  <arg name="password" default="niftiniftinifti" />
+  <arg name="password" default="niftiniftiniftii" />
   <arg name="hostname" default="192.168.50.3" />
   <arg name="estop_timeout" default="9.0"/>
   <arg name="publish_local_grid" default="false"/>
